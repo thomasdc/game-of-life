@@ -53,21 +53,16 @@ public record Generation(
 
     public override string ToString()
     {
-        var builder = new StringBuilder();
-        builder.AppendLine($"Generation {Iteration}:");
-        builder.AppendLine($"{Height} {Width}");
-        for (var y = 0; y < Height; y++)
-        {
-            var innerBuilder = new StringBuilder();
-            for (var x = 0; x < Width; x++)
-            {
-                innerBuilder.Append(Grid.GetValueOrDefault((x, y)) ? '*' : '.');
-            }
-
-            builder.AppendLine(innerBuilder.ToString());
-        }
-        
-        return builder.ToString().TrimEnd();
+        return new StringBuilder()
+            .AppendLine($"Generation {Iteration}:")
+            .AppendLine($"{Height} {Width}")
+            .AppendLine(string.Join("\r\n",
+                from y in Enumerable.Range(0, Height)
+                select string.Concat(
+                    from x in Enumerable.Range(0, Width)
+                    select Grid.GetValueOrDefault((x, y)) ? '*' : '.')))
+            .ToString()
+            .TrimEnd();
     }
 }
 
