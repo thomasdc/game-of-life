@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-using Xunit;
 
 namespace game_of_life;
 
@@ -11,11 +10,8 @@ public class Tests
         // Arrange
         const string input = """
                              Generation 1:
-                             4 8
-                             ........
-                             ....*...
-                             ...**...
-                             ........
+                             .*
+                             **
                              """;
 
         // Act
@@ -23,11 +19,16 @@ public class Tests
 
         // Assert
         generation.Iteration.Should().Be(1);
-        generation.Width.Should().Be(8);
-        generation.Height.Should().Be(4);
         generation.Grid.Should().HaveCount(3)
             .And.AllSatisfy(x => x.Value.Should().BeTrue())
-            .And.ContainKeys((4, 1), (3, 2), (4, 2));
+            .And.ContainKeys((1, 0), (0, 1), (1, 1));
+        generation.ToString().Should().Be("""
+                                          Generation 1:
+                                          ....
+                                          ..*.
+                                          .**.
+                                          ....
+                                          """);
     }
     
     [Fact]
@@ -36,11 +37,8 @@ public class Tests
         // Arrange
         const string input = """
                              Generation 1:
-                             4 8
-                             ........
-                             ....*...
-                             ...**...
-                             ........
+                             .*
+                             **
                              """;
         
         var generation = Generation.Parse(input);
@@ -51,32 +49,29 @@ public class Tests
         // Assert
         nextGeneration.ToString().Should().Be("""
                                               Generation 2:
-                                              4 8
-                                              ........
-                                              ...**...
-                                              ...**...
-                                              ........
+                                              ....
+                                              .**.
+                                              .**.
+                                              ....
                                               """);
     }
     
-    [Fact]
-    public Task ValidateIterations()
+    [Theory]
+    [InlineData("Glider", """
+                          Generation 1:
+                          .*.
+                          ..*
+                          ***
+                          """)]
+    [InlineData("Lol", """
+                       Generation 1:
+                       *...***.*..
+                       *...*.*.*..
+                       ***.***.***
+                       """)]
+    public Task ValidateIterations(string testCase, string input)
     {
         // Arrange
-        const string input = """
-                             Generation 1:
-                             9 11
-                             .*.........
-                             ..*........
-                             ***........
-                             ...........
-                             ...........
-                             ...........
-                             ...........
-                             ...........
-                             ...........
-                             """;
-        
         var generation = Generation.Parse(input);
 
         // Act
@@ -91,6 +86,6 @@ public class Tests
         }
         
         // Assert
-        return Verify(generations.ToString());
+        return Verify(generations.ToString().TrimEnd()).UseParameters(testCase);
     }
 }

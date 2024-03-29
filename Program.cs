@@ -11,31 +11,29 @@ do
 
 public record Generation(
     int Iteration, 
-    int Width, 
-    int Height, 
     IReadOnlyDictionary<(int X, int Y), bool> Grid)
 {
     public static Generation Parse(string input)
     {
         var lines = input.Split("\n");
         var iteration = int.Parse(Regex.Match(lines[0], @"\s(?<iter>\d+):").Groups["iter"].ValueSpan);
-        var dimension = Regex.Match(lines[1], @"(?<height>\d+)\s(?<width>\d+)");
-        var height = int.Parse(dimension.Groups["height"].ValueSpan);
-        var width = int.Parse(dimension.Groups["width"].ValueSpan);
+        var height = lines.Length - 1;
+        var width = lines[1].Trim().Length;
         var grid = (
             from y in Enumerable.Range(0, height)
             from x in Enumerable.Range(0, width)
-            where lines[y + 2][x] is '*'
+            where lines[y + 1][x] is '*'
             select ((x, y), true)
         ).ToDictionary();
-        return new Generation(iteration, width, height, grid);
+        return new Generation(iteration, grid);
     }
 
     public Generation Iterate()
     {
+        var bounds = Grid.Bounds();
         var nextGrid = (
-            from y in Enumerable.Range(0, Height)
-            from x in Enumerable.Range(0, Width)
+            from y in Enumerable.Range(bounds.Y.Min - 1, bounds.Y.Length + 2)
+            from x in Enumerable.Range(bounds.X.Min - 1, bounds.X.Length + 2)
             let liveNeighbourCount = (x, y).Neighbours().Count(n => Grid.GetValueOrDefault((n.X, n.Y)))
             let alive = Grid.GetValueOrDefault((x, y))
             let nextState = (alive, liveNeighbourCount) switch
@@ -44,22 +42,22 @@ public record Generation(
                 (true, > 3) => false,   // 2. Any live cell with more than three live neighbours dies, as if by overcrowding.
                 (true, 2 or 3) => true, // 3. Any live cell with two or three live neighbours lives on to the next generation.
                 (false, 3) => true,     // 4. Any dead cell with exactly three live neighbours becomes a live cell.
-                (_, _) => alive 
+                (_, _) => alive
             }
             select ((x, y), nextState)
         ).ToDictionary();
-        return this with { Iteration = Iteration + 1, Grid = nextGrid };
+        return new Generation(Iteration + 1, nextGrid);
     }
 
     public override string ToString()
     {
+        var bounds = Grid.Bounds();
         return new StringBuilder()
             .AppendLine($"Generation {Iteration}:")
-            .AppendLine($"{Height} {Width}")
             .AppendLine(string.Join("\r\n",
-                from y in Enumerable.Range(0, Height)
+                from y in Enumerable.Range(bounds.Y.Min - 1, bounds.Y.Length + 2)
                 select string.Concat(
-                    from x in Enumerable.Range(0, Width)
+                    from x in Enumerable.Range(bounds.X.Min - 1, bounds.X.Length + 2)
                     select Grid.GetValueOrDefault((x, y)) ? '*' : '.')))
             .ToString()
             .TrimEnd();
@@ -79,4 +77,15 @@ public static class Util
             from diff in NeighbourVectors
             select (cell.X + diff.xDiff, cell.Y + diff.yDiff))
         .ToArray();
+
+    public static ((int Min, int Length) Y, (int Min, int Length) X) Bounds(this IReadOnlyDictionary<(int X, int Y), bool> grid)
+    {
+        var aliveCells = grid.Where(_ => _.Value).Select(_ => _.Key).ToArray();
+        var minY = aliveCells.Min(_ => _.Y);
+        var minX = aliveCells.Min(_ => _.X);
+        return (
+            (minY, aliveCells.Max(_ => _.Y) - minY + 1),
+            (minX, aliveCells.Max(_ => _.X) - minX + 1)
+        );
+    }
 }
